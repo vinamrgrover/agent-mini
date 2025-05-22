@@ -1,61 +1,126 @@
-# Gemini Agent with Finance Tools
+# Agent Mini - Small Finance Agent
 
-This repository contains examples of using Google's Gemini API with LangGraph and LangChain to create AI agents for financial data analysis.
+A mini AI-Agent that uses the Langchain Y-Finance module to fetch the latest news for company tickers. Deployed on AWS Lambda as a container, with an API Gateway for easy access.
 
-## Scripts Overview
+## Features
 
-### 1. Basic Agent (agent.py)
-- Uses OpenAI's GPT-4 Mini
-- Implements Yahoo Finance News tool
-- Simple question-answering about companies
+- Fetches latest company news using stock ticker symbols (e.g., AAPL, MSFT)
+- Powered by Langchain and Google Gemini
+- Serverless, scalable, and easy to deploy on AWS
 
-### 2. Gemini Basic Agent (agent_gemini.py)
-- Replaces OpenAI with Google's Gemini API
-- Implements Yahoo Finance News tool
-- Similar functionality to the basic agent
+## Getting Started
 
-### 3. Enhanced Gemini Agent (agent_gemini_enhanced.py)
-- Uses Google's Gemini API
-- Implements both Yahoo Finance News and custom Stock Info tools
-- Provides more detailed financial analysis
-- Handles errors gracefully
-
-### 4. Simplified Gemini Agent (agent_gemini_simple.py)
-- Streamlined version that only uses the Yahoo Finance News tool
-- More reliable for basic financial news queries
-
-### 5. Final Gemini Agent (agent_gemini_final.py)
-- Improved version with custom tool wrapper and clear system prompts
-- Uses a tool with a more intuitive name (get_company_news)
-- Includes examples in the system prompt to guide the model
-- Reliable for retrieving news about specific companies
-
-### 6. Company Comparison Agent (agent_gemini_compare.py)
-- Specialized for comparing news between different companies
-- Uses ticker symbols to retrieve relevant information
-
-## Setup
-
-1. Create a virtual environment: `python -m venv .venv`
-2. Activate it: `source .venv/bin/activate`
-3. Install dependencies: `pip install langchain-community langgraph langchain-google-genai google-generativeai yfinance python-dotenv`
-4. Add your API keys to a `.env` file:
-   ```
-   OPENAI_API_KEY=your_openai_key_here
-   GOOGLE_API_KEY=your_gemini_key_here
-   ```
-
-## Usage
-
-Run any of the scripts using Python, for example:
+### 1. Building the Docker Image
 
 ```bash
-python agent_gemini_final.py
+docker build -t agent_mini:latest .
 ```
 
-## Notes
+### 2. Pushing to ECR
 
-- The Yahoo Finance News API may occasionally have connection issues
-- Gemini API has rate limits that might require adjusting the model (Flash vs Pro)
-- For more advanced financial analysis, additional tools would be needed
-- When designing agents, make sure the system prompt and tool descriptions are clear and include examples 
+First, create an ECR repository (if you haven't already):
+
+```bash
+aws ecr create-repository --repository-name agent-mini
+```
+
+Authenticate Docker to your registry:
+
+```bash
+aws ecr get-login-password --region <your-region> | docker login --username AWS --password-stdin <aws_account_id>.dkr.ecr.<your-region>.amazonaws.com
+```
+
+Tag and push the image:
+
+```bash
+docker tag agent_mini:latest <aws_account_id>.dkr.ecr.<your-region>.amazonaws.com/agent-mini:latest
+docker push <aws_account_id>.dkr.ecr.<your-region>.amazonaws.com/agent-mini:latest
+```
+
+### 3. Creating the Lambda Function
+
+Create a new Lambda function using the container image:
+
+```bash
+aws lambda create-function \
+  --function-name agent-mini-fn \
+  --package-type Image \
+  --code ImageUri=<aws_account_id>.dkr.ecr.<your-region>.amazonaws.com/agent-mini:latest \
+  --role arn:aws:iam::<aws_account_id>:role/<your-lambda-execution-role>
+```
+
+**Note:** Make sure your Lambda execution role has permissions for S3 (for logging) and any other AWS resources you use.
+
+### 4. Configuring API Gateway
+
+1. **Create an HTTP API** (recommended for simplicity):
+   - Go to the API Gateway Console
+   - Create a new HTTP API
+   - Add an integration: choose your Lambda function (`agent-mini-fn`)
+   - Add a route (e.g., `POST /news`)
+   - Deploy the API
+
+2. **Test your endpoint:**
+
+```bash
+curl -X POST "<invoke-url>/news" \
+  -H "Content-Type: application/json" \
+  -d '{"companies": ["Apple", "Microsoft"]}'
+```
+
+### 5. (Optional) Setting Rate Limiting
+
+You can configure rate limiting using API Gateway Usage Plans and API Keys, or attach AWS WAF for IP-based rate limiting.
+
+## Environment Variables
+
+Set the following environment variables (in Lambda or `.env`):
+
+| Variable | Description |
+|----------|-------------|
+| `S3_LOG_BUCKET` | S3 bucket for storing invocation logs |
+| `S3_LOG_PREFIX` | (Optional) Prefix for log files |
+| `GOOGLE_API_KEY` | (If using Google Gemini) API key |
+| `aws_access_key_id` | Your AWS Access Key ID
+| `aws_secret_access_key` | Your AWS Secret Access Key | 
+| ... | Any other required variables |
+
+## Example Usage
+
+### Request
+
+```http
+POST /news
+Content-Type: application/json
+
+{
+  "companies": ["Apple", "Microsoft"]
+}
+```
+
+### Response
+
+```json
+{
+  "companies": ["Apple", "Microsoft"],
+  "news": [
+    "Apple: ...",
+    "Microsoft: ..."
+  ]
+}
+```
+
+## Development & Local Testing
+
+You can run and test the container locally using Docker:
+
+```bash
+docker run -p 9000:8080 agent_mini:latest
+```
+
+Invoke the Lambda locally:
+
+```bash
+curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" \
+  -d '{"body": "{\"companies\": [\"Apple\", \"Microsoft\"]}"}'
+```
