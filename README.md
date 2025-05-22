@@ -4,7 +4,7 @@ A mini AI-Agent that uses the Langchain Y-Finance module to fetch the latest new
 
 ## Architecture Diagram
 
-![Untitled Diagram drawio-10](https://github.com/user-attachments/assets/0db24298-da0c-4118-90a4-8e01ac2041df)
+<img width="872" alt="Screenshot 2025-05-22 at 10 01 03 AM" src="https://github.com/user-attachments/assets/c50da96d-6d5a-4c4f-8ba9-3fdc043b0111" />
 
 
 ## Features
