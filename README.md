@@ -2,6 +2,11 @@
 
 A mini AI-Agent that uses the Langchain Y-Finance module to fetch the latest news for company tickers. Deployed on AWS Lambda as a container, with an API Gateway for easy access.
 
+## Architecture Diagram
+
+![Untitled Diagram drawio-10](https://github.com/user-attachments/assets/0db24298-da0c-4118-90a4-8e01ac2041df)
+
+
 ## Features
 
 - Fetches latest company news using stock ticker symbols (e.g., AAPL, MSFT)
